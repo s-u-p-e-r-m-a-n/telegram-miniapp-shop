@@ -7,6 +7,8 @@ import lombok.Setter;
 import ru.sergeydev.telegramminiappshop.category.entity.Category;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -31,8 +33,9 @@ public class Product {
     @Column(nullable = false)
     private BigDecimal price; // цена товара
 
-    @Column(name = "image_url")
-    private String imageUrl; // ссылка на изображение товара
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    @OrderBy("sortOrder ASC")
+    private List<ProductImage> images = new ArrayList<>();
 
     @Column(nullable = false)
     private Boolean active = true; // товар активен или скрыт
