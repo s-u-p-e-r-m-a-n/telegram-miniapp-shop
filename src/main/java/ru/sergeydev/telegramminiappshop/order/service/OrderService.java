@@ -3,9 +3,7 @@ package ru.sergeydev.telegramminiappshop.order.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
-import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
-import ru.sergeydev.telegramminiappshop.order.dto.OrderResponseDto;
+import ru.sergeydev.telegramminiappshop.order.dto.*;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderItem;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
@@ -15,6 +13,7 @@ import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -89,4 +88,36 @@ public class OrderService {
                 savedOrder.getCreatedAt()
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<OrderDetailsResponseDto> getOrdersByTelegramUserId(Long telegramUserId) {
+        return orderRepository.findByTelegramUserIdOrderByCreatedAtDesc(telegramUserId)
+                .stream()
+                .map(this::toOrderDetailsResponseDto)// собираем детали заказа
+                .toList();
+    }
+
+    private OrderDetailsResponseDto toOrderDetailsResponseDto(Order order) {
+        return new OrderDetailsResponseDto(
+                order.getId(),
+                order.getStatus(),
+                order.getTotalAmount(),
+                order.getCreatedAt(),
+                order.getItems()
+                        .stream()
+                        .map(this::toOrderItemResponseDto)
+                        .toList()
+        );
+    }
+    //собираем список товаров в заказе
+    private OrderItemResponseDto toOrderItemResponseDto(OrderItem item) {
+        return new OrderItemResponseDto(
+                item.getProduct().getId(),
+                item.getProductName(),
+                item.getProductPrice(),
+                item.getQuantity(),
+                item.getTotalPrice()
+        );
+    }
+
 }
