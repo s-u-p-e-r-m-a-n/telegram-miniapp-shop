@@ -1,4 +1,4 @@
-package ru.sergeydev.telegramminiappshop.product.entity.repository;
+package ru.sergeydev.telegramminiappshop.product.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.sergeydev.telegramminiappshop.product.entity.Product;

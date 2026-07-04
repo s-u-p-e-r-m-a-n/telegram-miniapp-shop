@@ -3,7 +3,7 @@ package ru.sergeydev.telegramminiappshop.product.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.sergeydev.telegramminiappshop.product.dto.ProductResponseDto;
-import ru.sergeydev.telegramminiappshop.product.entity.repository.ProductRepository;
+import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
 import ru.sergeydev.telegramminiappshop.product.mapper.ProductMapper;
 
 import java.util.List;
