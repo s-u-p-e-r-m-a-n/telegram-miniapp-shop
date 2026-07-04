@@ -76,9 +76,6 @@ public class OrderService {
 
             totalAmount = totalAmount.add(itemTotalPrice);
 
-            if (product.getTrackStock()) {
-                product.setStockQuantity(product.getStockQuantity() - itemRequest.quantity());
-            }
         }
 
         order.setTotalAmount(totalAmount);
