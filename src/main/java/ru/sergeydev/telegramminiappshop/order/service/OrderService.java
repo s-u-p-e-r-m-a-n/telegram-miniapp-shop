@@ -3,7 +3,10 @@ package ru.sergeydev.telegramminiappshop.order.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.sergeydev.telegramminiappshop.order.dto.*;
+import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
+import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
+import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
+import ru.sergeydev.telegramminiappshop.order.dto.OrderItemResponseDto;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderItem;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
@@ -23,7 +26,7 @@ public class OrderService {
     private final ProductRepository productRepository;
 
     @Transactional
-    public OrderResponseDto createOrder(CreateOrderRequestDto request) {
+    public OrderDetailsResponseDto createOrder(CreateOrderRequestDto request) {
 
         if (request.items() == null || request.items().isEmpty()) {
             throw new RuntimeException("Заказ не может быть пустым");
@@ -81,12 +84,7 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        return new OrderResponseDto(
-                savedOrder.getId(),
-                savedOrder.getStatus(),
-                savedOrder.getTotalAmount(),
-                savedOrder.getCreatedAt()
-        );
+        return toOrderDetailsResponseDto(savedOrder);
     }
 
     @Transactional(readOnly = true)
@@ -109,6 +107,7 @@ public class OrderService {
                         .toList()
         );
     }
+
     //собираем список товаров в заказе
     private OrderItemResponseDto toOrderItemResponseDto(OrderItem item) {
         return new OrderItemResponseDto(

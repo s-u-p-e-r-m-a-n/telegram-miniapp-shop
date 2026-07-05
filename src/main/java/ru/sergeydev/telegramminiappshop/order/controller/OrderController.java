@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
-import ru.sergeydev.telegramminiappshop.order.dto.OrderResponseDto;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
 
 import java.util.List;
@@ -18,7 +17,7 @@ public class OrderController {
 
     // Создать заказ
     @PostMapping
-    public OrderResponseDto createOrder(@RequestBody CreateOrderRequestDto request) {
+    public OrderDetailsResponseDto createOrder(@RequestBody CreateOrderRequestDto request) {
         return orderService.createOrder(request);
     }
 
