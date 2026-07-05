@@ -3,6 +3,7 @@ package ru.sergeydev.telegramminiappshop.order.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
@@ -116,6 +117,45 @@ public class OrderService {
                 item.getProductPrice(),
                 item.getQuantity(),
                 item.getTotalPrice()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminOrderDetailsResponseDto> getAdminOrders(OrderStatus status) {
+
+        if (status == null) {
+            return orderRepository.findAllByOrderByCreatedAtDesc()
+                    .stream()
+                    .map(this::toAdminOrderDetailsResponseDto)
+                    .toList();
+        }
+
+        return orderRepository.findByStatusOrderByCreatedAtDesc(status)
+                .stream()
+                .map(this::toAdminOrderDetailsResponseDto)
+                .toList();
+    }
+
+    private AdminOrderDetailsResponseDto toAdminOrderDetailsResponseDto(Order order) {
+        return new AdminOrderDetailsResponseDto(
+                order.getId(),
+                order.getTelegramUserId(),
+                order.getTelegramChatId(),
+
+                order.getCustomerName(),
+                order.getCustomerPhone(),
+                order.getCustomerComment(),
+
+                order.getStatus(),
+                order.getTotalAmount(),
+
+                order.getCreatedAt(),
+                order.getUpdatedAt(),
+
+                order.getItems()
+                        .stream()
+                        .map(this::toOrderItemResponseDto)
+                        .toList()
         );
     }
 
