@@ -1,11 +1,9 @@
 package ru.sergeydev.telegramminiappshop.admin.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
+import ru.sergeydev.telegramminiappshop.admin.dto.UpdateOrderStatusRequestDto;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
 
@@ -24,5 +22,13 @@ public class AdminOrderController {
             @RequestParam(required = false) OrderStatus status
     ) {
         return orderService.getAdminOrders(status);
+    }
+
+    @PatchMapping("/{orderId}/status")
+    public AdminOrderDetailsResponseDto updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestBody UpdateOrderStatusRequestDto request
+    ) {
+        return orderService.updateOrderStatus(orderId, request.status());
     }
 }

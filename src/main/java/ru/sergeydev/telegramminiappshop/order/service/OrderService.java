@@ -159,4 +159,42 @@ public class OrderService {
         );
     }
 
+
+    @Transactional
+    public AdminOrderDetailsResponseDto updateOrderStatus(Long orderId, OrderStatus newStatus) {
+
+        if (newStatus == null) {
+            throw new RuntimeException("Статус заказа не указан");
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+
+        validateStatusTransition(order.getStatus(), newStatus);
+
+        order.setStatus(newStatus);
+        order.setUpdatedAt(OffsetDateTime.now());
+
+        return toAdminOrderDetailsResponseDto(order);
+    }
+
+    //проверка статуса
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+
+        if (currentStatus == newStatus) {
+            return;
+        }
+
+        boolean allowed = switch (currentStatus) {
+            case NEW -> newStatus == OrderStatus.IN_WORK || newStatus == OrderStatus.CANCELLED;
+            case IN_WORK -> newStatus == OrderStatus.DONE || newStatus == OrderStatus.CANCELLED;
+            case DONE, CANCELLED -> false;
+        };
+
+        if (!allowed) {
+            throw new RuntimeException(
+                    "Нельзя изменить статус с " + currentStatus + " на " + newStatus
+            );
+        }
+    }
 }
