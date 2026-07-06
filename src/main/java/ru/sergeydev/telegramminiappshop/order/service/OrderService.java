@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
+import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
+import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
@@ -30,7 +32,7 @@ public class OrderService {
     public OrderDetailsResponseDto createOrder(CreateOrderRequestDto request) {
 
         if (request.items() == null || request.items().isEmpty()) {
-            throw new RuntimeException("Заказ не может быть пустым");
+            throw new BadRequestException("Заказ не может быть пустым");
         }
 
         Order order = new Order();
@@ -51,14 +53,14 @@ public class OrderService {
         for (CreateOrderItemRequestDto itemRequest : request.items()) {
 
             if (itemRequest.quantity() == null || itemRequest.quantity() <= 0) {
-                throw new RuntimeException("Количество товара должно быть больше 0");
+                throw new BadRequestException("Количество товара должно быть больше 0");
             }
 
             Product product = productRepository.findByIdAndActiveTrue(itemRequest.productId())
-                    .orElseThrow(() -> new RuntimeException("Товар не найден"));
+                    .orElseThrow(() -> new NotFoundException("Товар не найден"));
 
             if (product.getTrackStock() && product.getStockQuantity() < itemRequest.quantity()) {
-                throw new RuntimeException("Недостаточно товара на складе: " + product.getName());
+                throw new BadRequestException("Недостаточно товара на складе: " + product.getName());
             }
             //умножаем количество на цену
             BigDecimal itemTotalPrice = product.getPrice()
@@ -164,11 +166,11 @@ public class OrderService {
     public AdminOrderDetailsResponseDto updateOrderStatus(Long orderId, OrderStatus newStatus) {
 
         if (newStatus == null) {
-            throw new RuntimeException("Статус заказа не указан");
+            throw new BadRequestException("Статус заказа не указан");
         }
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
 
         validateStatusTransition(order.getStatus(), newStatus);
 
@@ -192,7 +194,7 @@ public class OrderService {
         };
 
         if (!allowed) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Нельзя изменить статус с " + currentStatus + " на " + newStatus
             );
         }

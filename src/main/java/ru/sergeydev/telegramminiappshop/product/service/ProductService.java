@@ -2,6 +2,7 @@ package ru.sergeydev.telegramminiappshop.product.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.product.dto.ProductResponseDto;
 import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
 import ru.sergeydev.telegramminiappshop.product.mapper.ProductMapper;
@@ -28,7 +29,7 @@ public class ProductService {
     public ProductResponseDto getActiveProductById(Long id) {
         return productRepository.findByIdAndActiveTrue(id)
                 .map(productMapper::toResponseDto)
-                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+                .orElseThrow(() -> new NotFoundException("Товар не найден"));
     }
 
     // Получить рекомендуемые товары
