@@ -163,8 +163,10 @@ public class OrderService {
 
 
     @Transactional
-    public AdminOrderDetailsResponseDto updateOrderStatus(Long orderId, OrderStatus newStatus) {
-
+    public AdminOrderDetailsResponseDto updateOrderStatus(
+            Long orderId,
+            OrderStatus newStatus
+    ) {
         if (newStatus == null) {
             throw new BadRequestException("Статус заказа не указан");
         }
@@ -172,12 +174,70 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Заказ не найден"));
 
-        validateStatusTransition(order.getStatus(), newStatus);
+        OrderStatus currentStatus = order.getStatus();
+
+        validateStatusTransition(currentStatus, newStatus);
+
+        // Если статус не изменился — ничего не делаем
+        if (currentStatus == newStatus) {
+            return toAdminOrderDetailsResponseDto(order);
+        }
+
+        // Менеджер принял заказ в работу — списываем товар
+        if (currentStatus == OrderStatus.NEW
+                && newStatus == OrderStatus.IN_WORK) {
+            decreaseStock(order);
+        }
+
+        // Заказ отменили после принятия в работу — возвращаем товар
+        if (currentStatus == OrderStatus.IN_WORK
+                && newStatus == OrderStatus.CANCELLED) {
+            restoreStock(order);
+        }
 
         order.setStatus(newStatus);
         order.setUpdatedAt(OffsetDateTime.now());
 
         return toAdminOrderDetailsResponseDto(order);
+    }
+
+    private void decreaseStock(Order order) {
+
+        for (OrderItem item : order.getItems()) {
+
+            Product product = item.getProduct();
+
+            // Если остатки этого товара не учитываются — пропускаем
+            if (!product.getTrackStock()) {
+                continue;
+            }
+
+            if (product.getStockQuantity() < item.getQuantity()) {
+                throw new BadRequestException(
+                        "Недостаточно товара на складе: " + product.getName()
+                );
+            }
+
+            product.setStockQuantity(
+                    product.getStockQuantity() - item.getQuantity()
+            );
+        }
+    }
+
+    private void restoreStock(Order order) {
+
+        for (OrderItem item : order.getItems()) {
+
+            Product product = item.getProduct();
+
+            if (!product.getTrackStock()) {
+                continue;
+            }
+
+            product.setStockQuantity(
+                    product.getStockQuantity() + item.getQuantity()
+            );
+        }
     }
 
     //проверка статуса
