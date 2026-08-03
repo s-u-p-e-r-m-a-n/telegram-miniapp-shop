@@ -1,5 +1,6 @@
 package ru.sergeydev.telegramminiappshop.order.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
@@ -17,13 +18,15 @@ public class OrderController {
 
     // Создать заказ
     @PostMapping
-    public OrderDetailsResponseDto createOrder(@RequestBody CreateOrderRequestDto request) {
+    public OrderDetailsResponseDto createOrder(
+            @Valid @RequestBody CreateOrderRequestDto request) {
         return orderService.createOrder(request);
     }
 
     // Заказы конкретного пользователя Telegram
     @GetMapping("/user/{telegramUserId}")
-    public List<OrderDetailsResponseDto> getOrdersByTelegramUserId(@PathVariable Long telegramUserId) {
+    public List<OrderDetailsResponseDto> getOrdersByTelegramUserId(
+            @Valid @PathVariable Long telegramUserId) {
         return orderService.getOrdersByTelegramUserId(telegramUserId);
     }
 
