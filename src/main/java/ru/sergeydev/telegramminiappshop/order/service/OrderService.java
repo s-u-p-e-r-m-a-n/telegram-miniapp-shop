@@ -1,6 +1,7 @@
 package ru.sergeydev.telegramminiappshop.order.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
@@ -13,9 +14,13 @@ import ru.sergeydev.telegramminiappshop.order.dto.OrderItemResponseDto;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderItem;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
+import ru.sergeydev.telegramminiappshop.order.event.OrderStatusChangedEvent;
 import ru.sergeydev.telegramminiappshop.order.repository.OrderRepository;
 import ru.sergeydev.telegramminiappshop.product.entity.Product;
 import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
+import ru.sergeydev.telegramminiappshop.telegram.entity.TelegramUserEntity;
+import ru.sergeydev.telegramminiappshop.telegram.service.TelegramNotificationService;
+import ru.sergeydev.telegramminiappshop.telegram.service.TelegramUserService;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -27,6 +32,9 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final TelegramUserService telegramUserService;
+    private final TelegramNotificationService telegramNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public OrderDetailsResponseDto createOrder(CreateOrderRequestDto request) {
@@ -34,11 +42,12 @@ public class OrderService {
         if (request.items() == null || request.items().isEmpty()) {
             throw new BadRequestException("Заказ не может быть пустым");
         }
-
+        TelegramUserEntity telegramUser =
+                telegramUserService.getByTelegramUserId(request.telegramUserId());
         Order order = new Order();
 
-        order.setTelegramUserId(request.telegramUserId());
-        order.setTelegramChatId(request.telegramChatId());
+        order.setTelegramUserId(telegramUser.getTelegramUserId());
+        order.setTelegramChatId(telegramUser.getTelegramUserId());
         order.setCustomerName(request.customerName());
         order.setCustomerPhone(request.customerPhone());
         order.setCustomerComment(request.customerComment());
@@ -86,7 +95,9 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
-
+        //отправляем детали заказа клиенту
+        telegramNotificationService.sendOrderCreatedToCustomer(savedOrder);
+        telegramNotificationService.sendOrderCreatedToAdmin(savedOrder);
         return toOrderDetailsResponseDto(savedOrder);
     }
 
@@ -197,6 +208,17 @@ public class OrderService {
 
         order.setStatus(newStatus);
         order.setUpdatedAt(OffsetDateTime.now());
+        // Публикуем событие внутри транзакции.
+        // Сам OrderStatusChangedEvent создаётся сразу,
+       // но обработчик с AFTER_COMMIT выполнится только после успешного commit.
+       // Если транзакция откатится — Telegram-уведомление не отправится.
+        eventPublisher.publishEvent(
+                new OrderStatusChangedEvent(
+                        order.getId(),
+                        order.getTelegramChatId(),
+                        newStatus
+                )
+        );
 
         return toAdminOrderDetailsResponseDto(order);
     }
