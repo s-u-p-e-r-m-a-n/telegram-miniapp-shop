@@ -115,4 +115,33 @@ public class TelegramNotificationService {
             );
         }
     }
+    public void sendManagerMessageToCustomer(
+            Long telegramChatId,
+            Long orderId,
+            String managerMessage
+    ) {
+        String text = """
+            Сообщение по заказу №%d:
+
+            %s
+            """.formatted(
+                orderId,
+                managerMessage
+        );
+
+        SendMessage message = SendMessage.builder()
+                .chatId(telegramChatId)
+                .text(text)
+                .build();
+
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            log.error(
+                    "Failed to send manager message to customer, orderId={}",
+                    orderId,
+                    e
+            );
+        }
+    }
 }

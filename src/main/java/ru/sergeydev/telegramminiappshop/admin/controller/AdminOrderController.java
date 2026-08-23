@@ -2,8 +2,10 @@ package ru.sergeydev.telegramminiappshop.admin.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
+import ru.sergeydev.telegramminiappshop.admin.dto.AdminSendMessageRequestDto;
 import ru.sergeydev.telegramminiappshop.admin.dto.UpdateOrderStatusRequestDto;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
@@ -31,5 +33,16 @@ public class AdminOrderController {
             @Valid @RequestBody UpdateOrderStatusRequestDto request
     ) {
         return orderService.updateOrderStatus(orderId, request.status());
+    }
+    @PostMapping("/orders/{orderId}/message")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendMessageToCustomer(
+            @PathVariable Long orderId,
+            @Valid @RequestBody AdminSendMessageRequestDto request
+    ) {
+        orderService.sendManagerMessageToCustomer(
+                orderId,
+                request.message()
+        );
     }
 }

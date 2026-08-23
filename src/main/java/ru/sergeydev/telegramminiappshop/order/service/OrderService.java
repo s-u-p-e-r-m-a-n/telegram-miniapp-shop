@@ -281,4 +281,18 @@ public class OrderService {
             );
         }
     }
+    @Transactional(readOnly = true)
+    public void sendManagerMessageToCustomer(
+            Long orderId,
+            String message
+    ) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
+
+        telegramNotificationService.sendManagerMessageToCustomer(
+                order.getTelegramChatId(),
+                order.getId(),
+                message
+        );
+    }
 }
