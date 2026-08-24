@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
+import ru.sergeydev.telegramminiappshop.telegram.security.TelegramInitDataValidator;
 
 import java.util.List;
 
@@ -15,18 +16,30 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final TelegramInitDataValidator telegramInitDataValidator;
 
     // Создать заказ
     @PostMapping
     public OrderDetailsResponseDto createOrder(
+            @RequestHeader(value = "X-Telegram-Init-Data",
+                    required = false) String initData,
             @Valid @RequestBody CreateOrderRequestDto request) {
-        return orderService.createOrder(request);
+        Long telegramUserId = telegramInitDataValidator.extractTelegramUserId(initData);
+        return orderService.createOrder(telegramUserId, request);
     }
 
+
     // Заказы конкретного пользователя Telegram
-    @GetMapping("/user/{telegramUserId}")
-    public List<OrderDetailsResponseDto> getOrdersByTelegramUserId(
-            @Valid @PathVariable Long telegramUserId) {
+    @GetMapping("/my")
+    public List<OrderDetailsResponseDto> getMyOrders(
+            @RequestHeader(
+                    value = "X-Telegram-Init-Data",
+                    required = false
+            ) String initData
+    ) {
+        Long telegramUserId =
+                telegramInitDataValidator.extractTelegramUserId(initData);
+
         return orderService.getOrdersByTelegramUserId(telegramUserId);
     }
 

@@ -3,14 +3,12 @@ package ru.sergeydev.telegramminiappshop.order.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
 public record CreateOrderRequestDto(
-        @NotNull(message = "Telegram user ID обязателен")
-        Long telegramUserId,       // временно принимаем с frontend
+
         @NotBlank(message = "Имя клиента обязательно")
         String customerName,       // имя клиента
         @NotBlank(message = "Телефон клиента обязателен")

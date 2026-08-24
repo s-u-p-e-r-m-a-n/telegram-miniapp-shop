@@ -37,13 +37,13 @@ public class OrderService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public OrderDetailsResponseDto createOrder(CreateOrderRequestDto request) {
+    public OrderDetailsResponseDto createOrder(Long telegramUserId, CreateOrderRequestDto request) {
 
         if (request.items() == null || request.items().isEmpty()) {
             throw new BadRequestException("Заказ не может быть пустым");
         }
         TelegramUserEntity telegramUser =
-                telegramUserService.getByTelegramUserId(request.telegramUserId());
+                telegramUserService.getByTelegramUserId(telegramUserId);
         Order order = new Order();
 
         order.setTelegramUserId(telegramUser.getTelegramUserId());
@@ -210,8 +210,8 @@ public class OrderService {
         order.setUpdatedAt(OffsetDateTime.now());
         // Публикуем событие внутри транзакции.
         // Сам OrderStatusChangedEvent создаётся сразу,
-       // но обработчик с AFTER_COMMIT выполнится только после успешного commit.
-       // Если транзакция откатится — Telegram-уведомление не отправится.
+        // но обработчик с AFTER_COMMIT выполнится только после успешного commit.
+        // Если транзакция откатится — Telegram-уведомление не отправится.
         eventPublisher.publishEvent(
                 new OrderStatusChangedEvent(
                         order.getId(),
@@ -281,6 +281,7 @@ public class OrderService {
             );
         }
     }
+
     @Transactional(readOnly = true)
     public void sendManagerMessageToCustomer(
             Long orderId,
