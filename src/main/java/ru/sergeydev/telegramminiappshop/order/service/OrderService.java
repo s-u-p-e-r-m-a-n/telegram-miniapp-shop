@@ -5,6 +5,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
+import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderSummaryResponseDto;
+import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderView;
 import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
 import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
@@ -25,6 +27,7 @@ import ru.sergeydev.telegramminiappshop.telegram.service.TelegramUserService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +50,7 @@ public class OrderService {
         Order order = new Order();
 
         order.setTelegramUserId(telegramUser.getTelegramUserId());
-        order.setTelegramChatId(telegramUser.getTelegramUserId());
+        order.setTelegramChatId(telegramUser.getTelegramChatId());
         order.setCustomerName(request.customerName());
         order.setCustomerPhone(request.customerPhone());
         order.setCustomerComment(request.customerComment());
@@ -122,6 +125,14 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public AdminOrderDetailsResponseDto getAdminOrderById(Long orderId) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
+
+        return toAdminOrderDetailsResponseDto(order);
+    }
     //собираем список товаров в заказе
     private OrderItemResponseDto toOrderItemResponseDto(OrderItem item) {
         return new OrderItemResponseDto(
@@ -134,19 +145,38 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminOrderDetailsResponseDto> getAdminOrders(OrderStatus status) {
+    public List<AdminOrderSummaryResponseDto> getAdminOrders(AdminOrderView view) {
 
-        if (status == null) {
-            return orderRepository.findAllByOrderByCreatedAtDesc()
-                    .stream()
-                    .map(this::toAdminOrderDetailsResponseDto)
-                    .toList();
+        // Для dashboard по умолчанию показывает активные заказы
+        if (view == null) {
+            view = AdminOrderView.ACTIVE;
         }
 
-        return orderRepository.findByStatusOrderByCreatedAtDesc(status)
-                .stream()
-                .map(this::toAdminOrderDetailsResponseDto)
+        List<Order> orders = switch (view) {
+            case ACTIVE -> orderRepository.findByStatusInOrderByCreatedAtDesc(
+                    List.of(OrderStatus.NEW, OrderStatus.IN_WORK)
+            );
+
+            case COMPLETED -> orderRepository.findByStatusInOrderByCreatedAtDesc(
+                    List.of(OrderStatus.DONE, OrderStatus.CANCELLED)
+            );
+
+            case ALL -> orderRepository.findAllByOrderByCreatedAtDesc();
+        };
+
+        return orders.stream()
+                .map(this::toAdminOrderSummaryResponseDto)
                 .toList();
+    }
+    private AdminOrderSummaryResponseDto toAdminOrderSummaryResponseDto(Order order) {
+        return new AdminOrderSummaryResponseDto(
+                order.getId(),
+                order.getCreatedAt(),
+                order.getCustomerName(),
+                order.getCustomerPhone(),
+                order.getTotalAmount(),
+                order.getStatus()
+        );
     }
 
     private AdminOrderDetailsResponseDto toAdminOrderDetailsResponseDto(Order order) {
@@ -296,4 +326,5 @@ public class OrderService {
                 message
         );
     }
+
 }

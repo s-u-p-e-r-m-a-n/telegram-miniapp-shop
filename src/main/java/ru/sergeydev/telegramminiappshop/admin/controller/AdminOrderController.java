@@ -4,10 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import ru.sergeydev.telegramminiappshop.admin.dto.AdminOrderDetailsResponseDto;
-import ru.sergeydev.telegramminiappshop.admin.dto.AdminSendMessageRequestDto;
-import ru.sergeydev.telegramminiappshop.admin.dto.UpdateOrderStatusRequestDto;
-import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
+import ru.sergeydev.telegramminiappshop.admin.dto.*;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
 
 import java.util.List;
@@ -19,12 +16,11 @@ public class AdminOrderController {
 
     private final OrderService orderService;
 
-    // Все заказы или заказы по конкретному статусу
     @GetMapping
-    public List<AdminOrderDetailsResponseDto> getAdminOrders(
-            @RequestParam(required = false) OrderStatus status
+    public List<AdminOrderSummaryResponseDto> getAdminOrders(
+            @RequestParam(required = false) AdminOrderView view
     ) {
-        return orderService.getAdminOrders(status);
+        return orderService.getAdminOrders(view);
     }
 
     @PatchMapping("/{orderId}/status")
@@ -34,7 +30,8 @@ public class AdminOrderController {
     ) {
         return orderService.updateOrderStatus(orderId, request.status());
     }
-    @PostMapping("/orders/{orderId}/message")
+
+    @PostMapping("/{orderId}/message")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendMessageToCustomer(
             @PathVariable Long orderId,
@@ -45,4 +42,11 @@ public class AdminOrderController {
                 request.message()
         );
     }
+
+    @GetMapping("/{orderId}")
+    public AdminOrderDetailsResponseDto getOrderDetails(@PathVariable Long orderId) {
+        return orderService.getAdminOrderById(orderId);
+    }
+
+
 }
