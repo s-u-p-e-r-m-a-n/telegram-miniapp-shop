@@ -8,6 +8,10 @@ import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import ru.sergeydev.telegramminiappshop.telegram.config.TelegramBotProperties;
@@ -47,9 +51,23 @@ public class TelegramShopBot implements SpringLongPollingBot,
                         telegramUserId,
                         telegramChatId
                 );
+                //берем из настроек ссылку на магазин
+                WebAppInfo webAppInfo = WebAppInfo.builder()
+                        .url(properties.webAppUrl())
+                        .build();
+                //создаем кнопку с ссылкой
+                InlineKeyboardButton openShopButton = InlineKeyboardButton.builder()
+                        .text("Открыть магазин")
+                        .webApp(webAppInfo)
+                        .build();
+                //устанваливаем кнопку
+                InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                        .keyboardRow(new InlineKeyboardRow(openShopButton))
+                        .build();
                 SendMessage message = SendMessage.builder()
                         .chatId(telegramChatId)
-                        .text("Добро пожаловать! Скоро здесь будет доступен магазин.")
+                        .text("Добро пожаловать! Откройте магазин по кнопке ниже.")
+                        .replyMarkup(keyboard)
                         .build();
 
                 try {

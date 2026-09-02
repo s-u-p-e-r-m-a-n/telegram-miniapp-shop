@@ -42,7 +42,7 @@ public class TelegramOrderService {
         );
 
         TelegramOrderDataEntity telegramOrderData = new TelegramOrderDataEntity();
-
+       //связываем заказ с клиентом(telegramUser)
         telegramOrderData.setOrder(order);
         telegramOrderData.setTelegramUser(telegramUser);
 
