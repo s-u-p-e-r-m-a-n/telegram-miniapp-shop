@@ -11,23 +11,20 @@ import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
 import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderItemRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
-import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
-import ru.sergeydev.telegramminiappshop.order.dto.OrderItemResponseDto;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderItem;
+import ru.sergeydev.telegramminiappshop.order.entity.OrderSource;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
+import ru.sergeydev.telegramminiappshop.order.event.OrderCreatedEvent;
 import ru.sergeydev.telegramminiappshop.order.event.OrderStatusChangedEvent;
+import ru.sergeydev.telegramminiappshop.order.mapper.OrderMapper;
 import ru.sergeydev.telegramminiappshop.order.repository.OrderRepository;
 import ru.sergeydev.telegramminiappshop.product.entity.Product;
 import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
-import ru.sergeydev.telegramminiappshop.telegram.entity.TelegramUserEntity;
-import ru.sergeydev.telegramminiappshop.telegram.service.TelegramNotificationService;
-import ru.sergeydev.telegramminiappshop.telegram.service.TelegramUserService;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,22 +32,18 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    private final TelegramUserService telegramUserService;
-    private final TelegramNotificationService telegramNotificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderMapper orderMapper;
 
     @Transactional
-    public OrderDetailsResponseDto createOrder(Long telegramUserId, CreateOrderRequestDto request) {
+    public Order createOrder(OrderSource source, CreateOrderRequestDto request) {
 
         if (request.items() == null || request.items().isEmpty()) {
             throw new BadRequestException("Заказ не может быть пустым");
         }
-        TelegramUserEntity telegramUser =
-                telegramUserService.getByTelegramUserId(telegramUserId);
-        Order order = new Order();
 
-        order.setTelegramUserId(telegramUser.getTelegramUserId());
-        order.setTelegramChatId(telegramUser.getTelegramChatId());
+        Order order = new Order();
+        order.setSource(source);
         order.setCustomerName(request.customerName());
         order.setCustomerPhone(request.customerPhone());
         order.setCustomerComment(request.customerComment());
@@ -98,31 +91,13 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
-        //отправляем детали заказа клиенту
-        telegramNotificationService.sendOrderCreatedToCustomer(savedOrder);
-        telegramNotificationService.sendOrderCreatedToAdmin(savedOrder);
-        return toOrderDetailsResponseDto(savedOrder);
-    }
 
-    @Transactional(readOnly = true)
-    public List<OrderDetailsResponseDto> getOrdersByTelegramUserId(Long telegramUserId) {
-        return orderRepository.findByTelegramUserIdOrderByCreatedAtDesc(telegramUserId)
-                .stream()
-                .map(this::toOrderDetailsResponseDto)// собираем детали заказа
-                .toList();
-    }
-
-    private OrderDetailsResponseDto toOrderDetailsResponseDto(Order order) {
-        return new OrderDetailsResponseDto(
-                order.getId(),
-                order.getStatus(),
-                order.getTotalAmount(),
-                order.getCreatedAt(),
-                order.getItems()
-                        .stream()
-                        .map(this::toOrderItemResponseDto)
-                        .toList()
+        eventPublisher.publishEvent(
+                new OrderCreatedEvent(savedOrder.getId())
         );
+
+        return savedOrder;
+
     }
 
     @Transactional(readOnly = true)
@@ -131,17 +106,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Заказ не найден"));
 
-        return toAdminOrderDetailsResponseDto(order);
-    }
-    //собираем список товаров в заказе
-    private OrderItemResponseDto toOrderItemResponseDto(OrderItem item) {
-        return new OrderItemResponseDto(
-                item.getProduct().getId(),
-                item.getProductName(),
-                item.getProductPrice(),
-                item.getQuantity(),
-                item.getTotalPrice()
-        );
+        return orderMapper.toAdminDetailsDto(order);
     }
 
     @Transactional(readOnly = true)
@@ -165,41 +130,8 @@ public class OrderService {
         };
 
         return orders.stream()
-                .map(this::toAdminOrderSummaryResponseDto)
+                .map(orderMapper::toAdminSummaryDto)
                 .toList();
-    }
-    private AdminOrderSummaryResponseDto toAdminOrderSummaryResponseDto(Order order) {
-        return new AdminOrderSummaryResponseDto(
-                order.getId(),
-                order.getCreatedAt(),
-                order.getCustomerName(),
-                order.getCustomerPhone(),
-                order.getTotalAmount(),
-                order.getStatus()
-        );
-    }
-
-    private AdminOrderDetailsResponseDto toAdminOrderDetailsResponseDto(Order order) {
-        return new AdminOrderDetailsResponseDto(
-                order.getId(),
-                order.getTelegramUserId(),
-                order.getTelegramChatId(),
-
-                order.getCustomerName(),
-                order.getCustomerPhone(),
-                order.getCustomerComment(),
-
-                order.getStatus(),
-                order.getTotalAmount(),
-
-                order.getCreatedAt(),
-                order.getUpdatedAt(),
-
-                order.getItems()
-                        .stream()
-                        .map(this::toOrderItemResponseDto)
-                        .toList()
-        );
     }
 
 
@@ -221,7 +153,7 @@ public class OrderService {
 
         // Если статус не изменился — ничего не делаем
         if (currentStatus == newStatus) {
-            return toAdminOrderDetailsResponseDto(order);
+            return orderMapper.toAdminDetailsDto(order);
         }
 
         // Менеджер принял заказ в работу — списываем товар
@@ -245,12 +177,11 @@ public class OrderService {
         eventPublisher.publishEvent(
                 new OrderStatusChangedEvent(
                         order.getId(),
-                        order.getTelegramChatId(),
                         newStatus
                 )
         );
 
-        return toAdminOrderDetailsResponseDto(order);
+        return orderMapper.toAdminDetailsDto(order);
     }
 
     private void decreaseStock(Order order) {
@@ -310,21 +241,6 @@ public class OrderService {
                     "Нельзя изменить статус с " + currentStatus + " на " + newStatus
             );
         }
-    }
-
-    @Transactional(readOnly = true)
-    public void sendManagerMessageToCustomer(
-            Long orderId,
-            String message
-    ) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
-
-        telegramNotificationService.sendManagerMessageToCustomer(
-                order.getTelegramChatId(),
-                order.getId(),
-                message
-        );
     }
 
 }

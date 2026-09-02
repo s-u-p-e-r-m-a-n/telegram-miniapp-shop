@@ -1,21 +1,21 @@
-package ru.sergeydev.telegramminiappshop.order.controller;
+package ru.sergeydev.telegramminiappshop.telegram.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
-import ru.sergeydev.telegramminiappshop.order.service.OrderService;
 import ru.sergeydev.telegramminiappshop.telegram.security.TelegramInitDataValidator;
+import ru.sergeydev.telegramminiappshop.telegram.service.TelegramOrderService;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class OrderController {
+public class TelegramOrderController {
 
-    private final OrderService orderService;
+    private final TelegramOrderService telegramOrderService;
     private final TelegramInitDataValidator telegramInitDataValidator;
 
     // Создать заказ
@@ -25,7 +25,10 @@ public class OrderController {
                     required = false) String initData,
             @Valid @RequestBody CreateOrderRequestDto request) {
         Long telegramUserId = telegramInitDataValidator.extractTelegramUserId(initData);
-        return orderService.createOrder(telegramUserId, request);
+        return telegramOrderService.createOrder(
+                telegramUserId,
+                request
+        );
     }
 
 
@@ -40,7 +43,7 @@ public class OrderController {
         Long telegramUserId =
                 telegramInitDataValidator.extractTelegramUserId(initData);
 
-        return orderService.getOrdersByTelegramUserId(telegramUserId);
+        return telegramOrderService.getOrders(telegramUserId);
     }
 
 

@@ -1,6 +1,7 @@
 package ru.sergeydev.telegramminiappshop.admin.dto;
 
 import ru.sergeydev.telegramminiappshop.order.dto.OrderItemResponseDto;
+import ru.sergeydev.telegramminiappshop.order.entity.OrderSource;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
 
 import java.math.BigDecimal;
@@ -8,9 +9,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 public record AdminOrderDetailsResponseDto(
-        Long id,                         // id заказа
-        Long telegramUserId,             // id пользователя Telegram
-        Long telegramChatId,             // id чата Telegram
+        Long id,
+        OrderSource source,
 
         String customerName,             // имя клиента
         String customerPhone,            // телефон клиента

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.sergeydev.telegramminiappshop.admin.dto.*;
 import ru.sergeydev.telegramminiappshop.order.service.OrderService;
+import ru.sergeydev.telegramminiappshop.telegram.service.TelegramOrderService;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ import java.util.List;
 public class AdminOrderController {
 
     private final OrderService orderService;
+    private final TelegramOrderService telegramOrderService;
 
     @GetMapping
     public List<AdminOrderSummaryResponseDto> getAdminOrders(
@@ -37,7 +39,7 @@ public class AdminOrderController {
             @PathVariable Long orderId,
             @Valid @RequestBody AdminSendMessageRequestDto request
     ) {
-        orderService.sendManagerMessageToCustomer(
+        telegramOrderService.sendManagerMessageToCustomer(
                 orderId,
                 request.message()
         );

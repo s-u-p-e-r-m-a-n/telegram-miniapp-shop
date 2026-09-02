@@ -18,7 +18,7 @@ public class TelegramNotificationService {
     private final TelegramClient telegramClient;
     private final TelegramBotProperties properties;
 
-    public void sendOrderCreatedToCustomer(Order order) {
+    public void sendOrderCreatedToCustomer(Order order,Long telegramChatId ) {
 
         String text = """
                 Ваш заказ №%d успешно оформлен.
@@ -34,7 +34,7 @@ public class TelegramNotificationService {
         );
 
         SendMessage message = SendMessage.builder()
-                .chatId(order.getTelegramChatId())
+                .chatId(telegramChatId)
                 .text(text)
                 .build();
 

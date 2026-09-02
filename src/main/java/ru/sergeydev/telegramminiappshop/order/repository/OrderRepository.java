@@ -9,9 +9,6 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    // Заказы конкретного пользователя Telegram
-    List<Order> findByTelegramUserIdOrderByCreatedAtDesc(Long telegramUserId);
-
     // Все заказы для админки, от новых к старым
     List<Order> findAllByOrderByCreatedAtDesc();
 

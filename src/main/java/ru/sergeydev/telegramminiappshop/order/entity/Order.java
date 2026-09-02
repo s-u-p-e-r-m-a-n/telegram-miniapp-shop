@@ -21,11 +21,9 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // id заказа
 
-    @Column(name = "telegram_user_id", nullable = false)
-    private Long telegramUserId; // id пользователя Telegram
-
-    @Column(name = "telegram_chat_id")
-    private Long telegramChatId; // id чата для отправки уведомлений
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderSource source; //источник
 
     @Column(name = "customer_name", nullable = false)
     private String customerName; // имя клиента
