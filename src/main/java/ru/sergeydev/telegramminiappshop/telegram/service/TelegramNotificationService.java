@@ -50,17 +50,27 @@ public class TelegramNotificationService {
     }
     public void sendOrderCreatedToAdmin(Order order) {
 
+        String commentText = "";
+
+        if (order.getCustomerComment() != null
+                && !order.getCustomerComment().isBlank()) {
+
+            commentText = "Комментарий: " + order.getCustomerComment();
+        }
+
         String text = """
             Новый заказ №%d
 
             Клиент: %s
             Телефон: %s
+            %s
             Сумма: %s ₽
             Статус: %s
             """.formatted(
                 order.getId(),
                 order.getCustomerName(),
                 order.getCustomerPhone(),
+                commentText,
                 order.getTotalAmount(),
                 order.getStatus()
         );

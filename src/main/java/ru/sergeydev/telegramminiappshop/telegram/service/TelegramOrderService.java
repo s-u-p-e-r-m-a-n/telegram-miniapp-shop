@@ -16,6 +16,7 @@ import ru.sergeydev.telegramminiappshop.telegram.repository.TelegramOrderDataRep
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,9 +29,10 @@ public class TelegramOrderService {
     private final TelegramNotificationService telegramNotificationService;
 
     @Transactional
-    public OrderDetailsResponseDto  createOrder(
+    public OrderDetailsResponseDto createOrder(
             Long telegramUserId,
-            CreateOrderRequestDto request
+            CreateOrderRequestDto request,
+            UUID idempotencyKey
     ) {
 
         TelegramUserEntity telegramUser =
@@ -38,15 +40,21 @@ public class TelegramOrderService {
 
         Order order = orderService.createOrder(
                 OrderSource.TELEGRAM,
-                request
+                request,
+                idempotencyKey
         );
 
-        TelegramOrderDataEntity telegramOrderData = new TelegramOrderDataEntity();
-       //связываем заказ с клиентом(telegramUser)
-        telegramOrderData.setOrder(order);
-        telegramOrderData.setTelegramUser(telegramUser);
+        //если нет такого заказа,то создаем
+        if (!telegramOrderDataRepository.existsById(order.getId())) {
 
-        telegramOrderDataRepository.save(telegramOrderData);
+            TelegramOrderDataEntity telegramOrderData =
+                    new TelegramOrderDataEntity();
+
+            telegramOrderData.setOrder(order);
+            telegramOrderData.setTelegramUser(telegramUser);//связываем заказ с клиентом
+
+            telegramOrderDataRepository.save(telegramOrderData);
+        }
 
         return orderMapper.toDetailsDto(order);
     }

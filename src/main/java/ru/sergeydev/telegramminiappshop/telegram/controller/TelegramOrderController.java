@@ -9,6 +9,7 @@ import ru.sergeydev.telegramminiappshop.telegram.security.TelegramInitDataValida
 import ru.sergeydev.telegramminiappshop.telegram.service.TelegramOrderService;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -23,11 +24,17 @@ public class TelegramOrderController {
     public OrderDetailsResponseDto createOrder(
             @RequestHeader(value = "X-Telegram-Init-Data",
                     required = false) String initData,
+
+            @RequestHeader("Idempotency-Key")
+            UUID idempotencyKey, //перед-м в заголовке ключ idempotency
+
             @Valid @RequestBody CreateOrderRequestDto request) {
         Long telegramUserId = telegramInitDataValidator.extractTelegramUserId(initData);
+
         return telegramOrderService.createOrder(
                 telegramUserId,
-                request
+                request,
+                idempotencyKey
         );
     }
 

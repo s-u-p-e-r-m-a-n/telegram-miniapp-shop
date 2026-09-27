@@ -1,5 +1,6 @@
 package ru.sergeydev.telegramminiappshop.order.repository;
-
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
 import ru.sergeydev.telegramminiappshop.order.entity.OrderStatus;
@@ -17,6 +18,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     //поиск по полученному статусу заказов
     List<Order> findByStatusInOrderByCreatedAtDesc(Collection<OrderStatus> statuses);
+
+    //поиск заказа по уникальному ключу
+    Optional<Order> findByIdempotencyKey(UUID idempotencyKey);
 
 
 

@@ -22,5 +22,7 @@ public record CreateOrderRequestDto(
         @NotEmpty(message = "Заказ должен содержать хотя бы один товар")
         @Valid
         List<CreateOrderItemRequestDto> items // товары в заказе
+
+
 ) {
 }

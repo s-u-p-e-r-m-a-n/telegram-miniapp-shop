@@ -25,6 +25,7 @@ import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,13 +37,21 @@ public class OrderService {
     private final OrderMapper orderMapper;
 
     @Transactional
-    public Order createOrder(OrderSource source, CreateOrderRequestDto request) {
+    public Order createOrder(OrderSource source, CreateOrderRequestDto request, UUID idempotencyKey) {
 
+        Order existingOrder = orderRepository
+                .findByIdempotencyKey(idempotencyKey)
+                .orElse(null);
+
+        if (existingOrder != null) {
+            return existingOrder;
+        }
         if (request.items() == null || request.items().isEmpty()) {
             throw new BadRequestException("Заказ не может быть пустым");
         }
 
         Order order = new Order();
+        order.setIdempotencyKey(idempotencyKey);
         order.setSource(source);
         order.setCustomerName(request.customerName());
         order.setCustomerPhone(request.customerPhone());
