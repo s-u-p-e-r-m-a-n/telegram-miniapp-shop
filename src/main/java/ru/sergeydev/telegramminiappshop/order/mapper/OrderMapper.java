@@ -17,6 +17,7 @@ public class OrderMapper {
                 order.getStatus(),
                 order.getTotalAmount(),
                 order.getCreatedAt(),
+                order.getPaymentExpiresAt(),
                 order.getItems()
                         .stream()
                         .map(this::toItemDto)

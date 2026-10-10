@@ -53,4 +53,7 @@ public class Order {
 
     @Column(name = "idempotency_key")
     private UUID idempotencyKey; // уникальный ключ для idempotency запросам
+
+    @Column(name = "payment_expires_at")
+    private OffsetDateTime paymentExpiresAt; // до какого момента можно оплатить заказ
 }

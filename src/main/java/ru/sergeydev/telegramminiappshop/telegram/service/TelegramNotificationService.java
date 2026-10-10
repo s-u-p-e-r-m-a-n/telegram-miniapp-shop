@@ -99,6 +99,7 @@ public class TelegramNotificationService {
             case IN_WORK -> "Принят в работу";
             case DONE -> "Выполнен";
             case CANCELLED -> "Отменён";
+            case AWAITING_PAYMENT -> "Ожидает оплаты";
         };
 
         String text = """

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
+import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.order.dto.CreateOrderRequestDto;
 import ru.sergeydev.telegramminiappshop.order.dto.OrderDetailsResponseDto;
 import ru.sergeydev.telegramminiappshop.order.entity.Order;
@@ -44,7 +45,7 @@ public class TelegramOrderService {
                 idempotencyKey
         );
 
-        //если нет такого заказа,то создаем
+        //если нет такого заказа, то создаем
         if (!telegramOrderDataRepository.existsById(order.getId())) {
 
             TelegramOrderDataEntity telegramOrderData =
@@ -119,5 +120,26 @@ public class TelegramOrderService {
                     telegramNotificationService
                             .sendOrderCreatedToAdmin(order);
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public void validateOrderOwnership(// проверка телеграмм пользователя для оплаты
+            Long orderId,
+            Long telegramUserId
+    ) {
+
+        TelegramOrderDataEntity data = telegramOrderDataRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new NotFoundException("Заказ не найден")
+                );
+
+        Long orderOwnerId = data
+                .getTelegramUser()
+                .getTelegramUserId();
+
+        if (!orderOwnerId.equals(telegramUserId)) {
+            throw new NotFoundException("Заказ не найден");
+        }
     }
 }

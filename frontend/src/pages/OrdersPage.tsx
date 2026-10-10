@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-
+import {PaymentCountdown} from '../components/PaymentCountdown';
 import { getMyOrders } from '../api/ordersApi';
 import {
     getOrderStatusText,
@@ -19,24 +19,50 @@ export function OrdersPage({
     const [isLoading, setIsLoading] = useState(true);//запрос еще идет true
 
     useEffect(() => {
+        let stopped = false;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        let hasLoaded = false;
+
+        setIsLoading(true);
+        setErrorMessage(null);
 
         const loadOrders = async () => {
-            setErrorMessage(null);
-            setIsLoading(true);
-
             try {
                 const data = await getMyOrders(initData);
+
+                if (stopped) {
+                    return;
+                }
+
                 setOrders(data);
+                setErrorMessage(null);
+                hasLoaded = true;
             } catch (error) {
+                if (stopped) {
+                    return;
+                }
+
                 console.error('Ошибка загрузки заказов', error);
-                setErrorMessage('Не удалось загрузить заказы');
-            }finally {
-                setIsLoading(false);
+
+                // Если данные уже показаны, сохраняем их на экране.
+                if (!hasLoaded) {
+                    setErrorMessage('Не удалось загрузить заказы');
+                }
+            } finally {
+                if (!stopped) {
+                    setIsLoading(false);
+
+                    timeoutId = setTimeout(loadOrders, 10_000);
+                }
             }
         };
 
-        loadOrders();
+        void loadOrders();
 
+        return () => {
+            stopped = true;
+            clearTimeout(timeoutId);
+        };
     }, [initData]);
 
     return (
@@ -94,6 +120,12 @@ export function OrdersPage({
                                     order.status
                                 )}
                             </span>
+                            {order.status === 'AWAITING_PAYMENT'//таймер оплаты
+                                && order.paymentExpiresAt && (
+                                    <PaymentCountdown
+                                        expiresAt={order.paymentExpiresAt}
+                                    />
+                                )}
 
                         </div>
 

@@ -11,6 +11,7 @@ public record OrderDetailsResponseDto(
         OrderStatus status,              // статус заказа
         BigDecimal totalAmount,          // итоговая сумма заказа
         OffsetDateTime createdAt,        // дата создания
+        OffsetDateTime paymentExpiresAt,
         List<OrderItemResponseDto> items // товары внутри заказа
 ) {
 }

@@ -1,4 +1,5 @@
 export type OrderStatus =
+    | 'AWAITING_PAYMENT'
     | 'NEW'
     | 'IN_WORK'
     | 'DONE'
@@ -17,6 +18,7 @@ export type OrderDetails = {
     status: OrderStatus;
     totalAmount: number;
     createdAt: string;
+    paymentExpiresAt: string | null;
     items: OrderItem[];
 };
 
@@ -24,6 +26,8 @@ export function getOrderStatusText(
     status: OrderStatus
 ): string {
     switch (status) {
+        case 'AWAITING_PAYMENT':
+            return 'Ожидает оплаты';
         case 'NEW':
             return 'Новый';
 

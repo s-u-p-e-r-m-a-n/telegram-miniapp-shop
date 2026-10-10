@@ -1,5 +1,6 @@
 package ru.sergeydev.telegramminiappshop.order.service;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,9 @@ import ru.sergeydev.telegramminiappshop.product.repository.ProductRepository;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Service
@@ -35,6 +38,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
+    private final EntityManager entityManager;
 
     @Transactional
     public Order createOrder(OrderSource source, CreateOrderRequestDto request, UUID idempotencyKey) {
@@ -56,21 +60,30 @@ public class OrderService {
         order.setCustomerName(request.customerName());
         order.setCustomerPhone(request.customerPhone());
         order.setCustomerComment(request.customerComment());
-        order.setStatus(OrderStatus.NEW);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
 
         OffsetDateTime now = OffsetDateTime.now();
         order.setCreatedAt(now);
         order.setUpdatedAt(now);
+        order.setPaymentExpiresAt(now.plusMinutes(30));
 
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        for (CreateOrderItemRequestDto itemRequest : request.items()) {
+        //сортировка товаров для избежания взаимных блокировок при обращении к БД с учетом блокировок
+        List<CreateOrderItemRequestDto> sortedItems = request.items()
+                .stream()
+                .sorted(Comparator.comparing(
+                        CreateOrderItemRequestDto::productId
+                ))
+                .toList();
+
+        for (CreateOrderItemRequestDto itemRequest : sortedItems) {
 
             if (itemRequest.quantity() == null || itemRequest.quantity() <= 0) {
                 throw new BadRequestException("Количество товара должно быть больше 0");
             }
 
-            Product product = productRepository.findByIdAndActiveTrue(itemRequest.productId())
+            Product product = productRepository.findActiveByIdForUpdate(itemRequest.productId())
                     .orElseThrow(() -> new NotFoundException("Товар не найден"));
 
             if (product.getTrackStock() && product.getStockQuantity() < itemRequest.quantity()) {
@@ -97,13 +110,10 @@ public class OrderService {
 
         }
 
+        decreaseStock(order);
         order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
-
-        eventPublisher.publishEvent(
-                new OrderCreatedEvent(savedOrder.getId())
-        );
 
         return savedOrder;
 
@@ -153,8 +163,12 @@ public class OrderService {
             throw new BadRequestException("Статус заказа не указан");
         }
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() ->
+                        new NotFoundException("Заказ не найден")
+                );
+
+        entityManager.refresh(order);
 
         OrderStatus currentStatus = order.getStatus();
 
@@ -165,15 +179,11 @@ public class OrderService {
             return orderMapper.toAdminDetailsDto(order);
         }
 
-        // Менеджер принял заказ в работу — списываем товар
-        if (currentStatus == OrderStatus.NEW
-                && newStatus == OrderStatus.IN_WORK) {
-            decreaseStock(order);
-        }
-
-        // Заказ отменили после принятия в работу — возвращаем товар
-        if (currentStatus == OrderStatus.IN_WORK
+        //возврат
+        if ((currentStatus == OrderStatus.NEW
+                || currentStatus == OrderStatus.IN_WORK)
                 && newStatus == OrderStatus.CANCELLED) {
+
             restoreStock(order);
         }
 
@@ -218,16 +228,35 @@ public class OrderService {
 
     private void restoreStock(Order order) {
 
+        var quantitiesByProductId = new TreeMap<Long, Integer>();//отсортированные ключи(порядка обхода) в мапе,иначе взаимная блокировка
+//сохраняем в мап заказ, присваивается индент productId(Long) + ЗНАЧЕНИЕ(Integer), при каждом проходе если идент
+// одинаковый срабатывает переданный метод суммирования старого значения+новое. Подсчет остатков по каждому товару.
         for (OrderItem item : order.getItems()) {
+            quantitiesByProductId.merge(
+                    item.getProduct().getId(),
+                    item.getQuantity(),
+                    Integer::sum
+            );
+        }
+//возвращаем товар на склад
+        for (var entry : quantitiesByProductId.entrySet()) {//.entrySet() используется для того,
+            // чтобы перебрать (обойти в цикле) полученный результат.
 
-            Product product = item.getProduct();
+            Product product = productRepository
+                    .findByIdForUpdate(entry.getKey())
+                    .orElseThrow(() ->
+                            new NotFoundException("Товар заказа не найден")
+                    );
+
+            // Перечитываем состояние после получения блокировки.
+            entityManager.refresh(product);
 
             if (!product.getTrackStock()) {
                 continue;
             }
 
             product.setStockQuantity(
-                    product.getStockQuantity() + item.getQuantity()
+                    product.getStockQuantity() + entry.getValue()
             );
         }
     }
@@ -240,6 +269,7 @@ public class OrderService {
         }
 
         boolean allowed = switch (currentStatus) {
+            case AWAITING_PAYMENT -> false;
             case NEW -> newStatus == OrderStatus.IN_WORK || newStatus == OrderStatus.CANCELLED;
             case IN_WORK -> newStatus == OrderStatus.DONE || newStatus == OrderStatus.CANCELLED;
             case DONE, CANCELLED -> false;
@@ -250,6 +280,60 @@ public class OrderService {
                     "Нельзя изменить статус с " + currentStatus + " на " + newStatus
             );
         }
+    }
+
+    @Transactional
+    public void markOrderAsPaid(Long orderId) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Заказ не найден"));
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new BadRequestException(
+                    "Заказ не ожидает оплату"
+            );
+        }
+
+        order.setStatus(OrderStatus.NEW);
+        order.setPaymentExpiresAt(null);
+        order.setUpdatedAt(OffsetDateTime.now());
+
+        eventPublisher.publishEvent(
+                new OrderCreatedEvent(order.getId())
+        );
+    }
+
+    @Transactional
+    public void cancelAwaitingPayment(Long orderId) {
+
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() ->
+                        new NotFoundException("Заказ не найден")
+                );
+//запрос свежей инф. из БД по order
+        entityManager.refresh(order);
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return;
+        }
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new BadRequestException(
+                    "Заказ не ожидает оплату"
+            );
+        }
+
+        restoreStock(order);
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setUpdatedAt(OffsetDateTime.now());
+
+        eventPublisher.publishEvent(
+                new OrderStatusChangedEvent(
+                        order.getId(),
+                        OrderStatus.CANCELLED
+                )
+        );
     }
 
 }
