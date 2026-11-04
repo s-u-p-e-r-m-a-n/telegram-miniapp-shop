@@ -1,6 +1,6 @@
 package ru.sergeydev.telegramminiappshop.product.service;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
@@ -16,11 +16,10 @@ public class ProductImageStorageService {
     private final Path uploadDirectory;
 
     public ProductImageStorageService(
-            @Value("${app.upload-dir}") String uploadDirectory
+            //указывает Spring имя бина
+            @Qualifier("productImageUploadDirectory") Path uploadDirectory
     ) {
-        this.uploadDirectory = Path.of(uploadDirectory)
-                .toAbsolutePath()
-                .normalize();
+        this.uploadDirectory = uploadDirectory;
     }
 
     public String store(MultipartFile file) {
@@ -28,9 +27,9 @@ public class ProductImageStorageService {
             throw new BadRequestException("Файл изображения пустой");
         }
 
-        String extension = switch (file.getContentType() == null
-                ? ""
-                : file.getContentType()) {
+        String contentType = file.getContentType();
+
+        String extension = switch (contentType == null ? "" : contentType) {
             case "image/jpeg" -> ".jpg";
             case "image/png" -> ".png";
             case "image/webp" -> ".webp";

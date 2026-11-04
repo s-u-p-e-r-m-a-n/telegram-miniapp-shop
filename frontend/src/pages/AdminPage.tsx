@@ -1,27 +1,25 @@
-import { Fragment, useState, type FormEvent } from 'react';
-import { createAdminCategory, deleteAdminCategory } from '../api/adminCategoriesApi';
+import {type FormEvent, Fragment, useEffect, useState} from 'react';
+import {createAdminCategory, deleteAdminCategory} from '../api/adminCategoriesApi';
 import {
-    getAdminOrders,
-    getAdminOrderDetails,
-    updateAdminOrderStatus,
-    sendAdminOrderMessage,
     type AdminCredentials,
     type AdminOrderDetails,
     type AdminOrderStatus,
-    type AdminOrdersView,
     type AdminOrderSummary,
+    type AdminOrdersView,
+    getAdminOrderDetails,
+    getAdminOrders,
+    sendAdminOrderMessage,
+    updateAdminOrderStatus,
 } from '../api/adminOrdersApi';
 import './AdminPage.css';
 import {
-    getAdminProducts,
     createAdminProduct,
-    updateAdminProduct,
     deleteAdminProduct,
+    getAdminProducts,
+    updateAdminProduct,
+    uploadAdminProductImage
 } from '../api/adminProductsApi';
-import type {
-    AdminProduct,
-    AdminProductRequest
-} from '../types/AdminProduct';
+import type {AdminProduct, AdminProductRequest} from '../types/AdminProduct';
 
 import {getCategories} from '../api/categoriesApi';
 import type {Category} from '../types/Category';
@@ -175,6 +173,7 @@ export function AdminPage() {
     const [products, setProducts] = useState<AdminProduct[]>([]);
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState('');
+    const [productImageFile, setProductImageFile] = useState<File | null>(null);
 
     const [editingProduct, setEditingProduct] =
         useState<AdminProduct | null>(null);
@@ -477,6 +476,7 @@ export function AdminPage() {
             trackStock: product.trackStock,
         });
         setProductSaveError('');
+        setProductImageFile(null);
     };
 
     const handleCloseProductForm = () => {
@@ -485,6 +485,7 @@ export function AdminPage() {
         setEditingProduct(null);
         setProductForm(null);
         setProductSaveError('');
+        setProductImageFile(null);
     };
 
     const handleUpdateProduct = async (
@@ -498,10 +499,26 @@ export function AdminPage() {
         setProductSaveError('');
 
         try {
+            let request: AdminProductRequest = productForm;
+
+            if (productImageFile) {
+                const {imageUrl} = await uploadAdminProductImage(
+                    credentials,
+                    productImageFile
+                );
+
+                const images: string[] = [imageUrl, ...productForm.images.slice(1)];
+
+                request = { ...productForm, images };
+
+                setProductForm(current => current ? { ...current, images } : current);
+                setProductImageFile(null);
+            }
+
             const updatedProduct = await updateAdminProduct(
                 credentials,
                 editingProduct.id,
-                productForm
+                request
             );
 
             setProducts(currentProducts =>
@@ -628,20 +645,35 @@ export function AdminPage() {
             .map(image => image.trim())
             .filter(Boolean);
 
-        if (imageUrls.length === 0) {
-            setProductSaveError('Укажите хотя бы одну ссылку на изображение');
+        if (imageUrls.length === 0 && !productImageFile) {
+            setProductSaveError('Выберите фото или укажите ссылку на изображение');
             return;
         }
-
-        const request: AdminProductRequest = {
-            ...productForm,
-            images: imageUrls,
-        };
 
         setProductSaving(true);
         setProductSaveError('');
 
         try {
+            if (productImageFile) {
+                const {imageUrl} = await uploadAdminProductImage(
+                    credentials,
+                    productImageFile
+                );
+
+                imageUrls.push(imageUrl);
+                setProductImageFile(null);
+                setProductForm(current =>
+                    current
+                        ? {...current, images: [...current.images, imageUrl]}
+                        : current
+                );
+            }
+
+            const request: AdminProductRequest = {
+                ...productForm,
+                images: imageUrls,
+            };
+
             await createAdminProduct(credentials, request);
             setProductForm(null);
             setActiveSection('products');
@@ -779,6 +811,20 @@ export function AdminPage() {
             setCategoryDeletingId(null);
         }
     };
+
+    const [productImagePreview, setProductImagePreview] = useState('');
+
+    useEffect(() => {
+        if (!productImageFile) {
+            setProductImagePreview('');
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(productImageFile);
+        setProductImagePreview(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [productImageFile]);
 
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     return (
@@ -1123,12 +1169,21 @@ export function AdminPage() {
                                                                 }
                                                             />
                                                         </label>
-
+                                                        <label className="admin-product-field">
+                                                            Загрузить фото
+                                                            <input
+                                                                type="file"
+                                                                accept="image/jpeg,image/png,image/webp"
+                                                                disabled={productSaving}
+                                                                onChange={event =>
+                                                                    setProductImageFile(event.currentTarget.files?.[0] ?? null)
+                                                                }
+                                                            />
+                                                        </label>
                                                         <label
                                                             className="admin-product-field admin-product-field--wide">
                                                             Ссылки на изображения — по одной на строку
                                                             <textarea
-                                                                required
                                                                 rows={3}
                                                                 placeholder="https://example.com/product.jpg"
                                                                 value={productForm.images.join('\n')}
@@ -1375,7 +1430,7 @@ export function AdminPage() {
 
                                         {categoriesLoading ? (
                                             <div className="admin-empty-state">
-                                                <span className="admin-loader" />
+                                                <span className="admin-loader"/>
                                                 <p>Загружаем категории...</p>
                                             </div>
                                         ) : categories.length === 0 ? (
@@ -1553,7 +1608,7 @@ export function AdminPage() {
                                                                     </span>
                                                             </td>
                                                             <td data-label="Покупатель">
-                                                            <strong>{order.customerName}</strong>
+                                                                <strong>{order.customerName}</strong>
                                                                 <span className="admin-order-phone">
                                                                         {order.customerPhone}
                                                                     </span>
@@ -1692,7 +1747,8 @@ export function AdminPage() {
                                                                             >
                                                                                 <strong>{group.categoryName}</strong>
 
-                                                                                <span className="admin-product-category-count">
+                                                                                <span
+                                                                                    className="admin-product-category-count">
                             {group.products.length} шт.
                         </span>
 
@@ -1890,24 +1946,24 @@ export function AdminPage() {
                                                     }
                                                 />
                                             </label>
-
-                                            <label className="admin-product-field admin-product-field--wide">
-                                                Ссылки на изображения — по одной на строку
-                                                <textarea
-                                                    required
-                                                    rows={3}
-                                                    value={productForm.images.join('\n')}
+                                            <label className="admin-product-field">
+                                                Добавить фото
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    disabled={productSaving}
                                                     onChange={event =>
-                                                        setProductForm({
-                                                            ...productForm,
-                                                            images: event.target.value
-                                                                .split('\n')
-                                                                .map(image => image.trim())
-                                                                .filter(Boolean),
-                                                        })
+                                                        setProductImageFile(event.currentTarget.files?.[0] ?? null)
                                                     }
                                                 />
                                             </label>
+                                            {(productImagePreview || productForm.images[0]) && (
+                                                <img
+                                                    src={productImagePreview || productForm.images[0]}
+                                                    alt="Главное фото товара"
+                                                    style={{width: 180, height: 180, objectFit: 'contain'}}
+                                                />
+                                            )}
 
                                             <label className="admin-product-field">
                                                 Остаток

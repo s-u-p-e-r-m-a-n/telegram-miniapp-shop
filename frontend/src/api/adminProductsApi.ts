@@ -33,7 +33,7 @@ async function adminRequest<T>(
         `Basic ${encodeCredentials(credentials)}`
     );
 
-    if (init.body !== undefined) {
+    if (typeof init.body === 'string') {
         headers.set('Content-Type', 'application/json');
     }
 
@@ -117,5 +117,23 @@ export function deleteAdminProduct(
         `${ADMIN_PRODUCTS_URL}/${productId}`,
         credentials,
         { method: 'DELETE' }
+    );
+
+}
+
+export function uploadAdminProductImage(
+    credentials: AdminCredentials,
+    file: File
+): Promise<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return adminRequest<{ imageUrl: string }>(
+        `${ADMIN_PRODUCTS_URL}/images`,
+        credentials,
+        {
+            method: 'POST',
+            body: formData
+        }
     );
 }
