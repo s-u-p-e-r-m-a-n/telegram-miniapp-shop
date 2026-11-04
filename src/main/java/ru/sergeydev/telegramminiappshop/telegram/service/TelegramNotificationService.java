@@ -21,12 +21,12 @@ public class TelegramNotificationService {
     public void sendOrderCreatedToCustomer(Order order,Long telegramChatId ) {
 
         String text = """
-                Ваш заказ №%d успешно оформлен.
+                Оплата получена. Заказ №%d успешно оформлен и
 
                 Итого: %s ₽
                 Статус: %s
 
-                Менеджер свяжется с вами для подтверждения.
+                передан в обработку.
                 """.formatted(
                 order.getId(),
                 order.getTotalAmount(),

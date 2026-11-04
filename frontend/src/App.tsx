@@ -1,5 +1,6 @@
 import {ShopPage} from "./pages/ShopPage.tsx";
-import {Route, Routes, useNavigate} from 'react-router-dom';
+import {Route, Routes,useLocation, useNavigate} from 'react-router-dom';
+import { AdminPage } from './pages/AdminPage';
 import {useEffect, useState} from 'react';
 import type {Product} from './types/Product';
 import type {CartItem} from './types/CartItem';
@@ -18,6 +19,7 @@ function App() {
     telegramWebApp?.ready();
     telegramWebApp?.expand();
     const initData = telegramWebApp?.initData ?? '';
+  //запрос корзины при открытии магазина
     const [cartItems, setCartItems] = useState<CartItem[]>(() => {
         const savedCart = localStorage.getItem('cartItems');
 
@@ -40,8 +42,10 @@ function App() {
     }, [cartItems]);
     const [createdOrder, setCreatedOrder] = useState<OrderDetails | null>(null);
     const navigate = useNavigate();
+    const location = useLocation();//сообщает текущий адрес React
 
 
+//обработать событие «Заказ создан»
     const handleOrderCreated = (order: OrderDetails) => {
         setCreatedOrder(order);
         setCartItems([]);//очищает корзину
@@ -115,6 +119,10 @@ function App() {
                     }
                 />
                 <Route
+                    path="/admin"
+                    element={<AdminPage />}
+                />
+                <Route
                     path="/catalog"
                     element={
                         <ShopPage
@@ -164,9 +172,11 @@ function App() {
                     }
                 />
             </Routes>
-            <BottomNavigation
-                cartItemsCount={cartItemsCount}
-            /></>
+            {!location.pathname.startsWith('/admin') && (
+                <BottomNavigation
+                    cartItemsCount={cartItemsCount}
+                />
+            )}</>
     );
 }
 

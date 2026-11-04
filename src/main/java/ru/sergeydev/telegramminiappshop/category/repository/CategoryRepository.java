@@ -9,4 +9,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
 //найти активные категории и отсортировать по порядку вывода.
     List<Category> findByActiveTrueOrderBySortOrderAsc();
+
+    boolean existsByNameIgnoreCase(String name);
+
 }

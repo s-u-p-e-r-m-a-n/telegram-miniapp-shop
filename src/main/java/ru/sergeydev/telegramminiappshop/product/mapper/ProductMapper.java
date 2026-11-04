@@ -1,6 +1,7 @@
 package ru.sergeydev.telegramminiappshop.product.mapper;
 
 import org.mapstruct.*;
+import ru.sergeydev.telegramminiappshop.product.dto.AdminProductResponseDto;
 import ru.sergeydev.telegramminiappshop.product.dto.ProductResponseDto;
 import ru.sergeydev.telegramminiappshop.product.entity.Product;
 import ru.sergeydev.telegramminiappshop.product.entity.ProductImage;
@@ -28,4 +29,9 @@ public interface ProductMapper {
                 .map(ProductImage::getImageUrl)
                 .toList();
     }
+    @Mapping(source = "category.id", target = "categoryId")
+    @Mapping(source = "category.name", target = "categoryName")
+    @Mapping(source = "images", target = "images")
+    AdminProductResponseDto toAdminResponseDto(Product product);
+
 }

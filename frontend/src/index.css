@@ -369,6 +369,13 @@ button {
 
     font-weight: 700;
 }
+.order-payment-link {
+    display: block;
+    box-sizing: border-box;
+    text-align: center;
+    color: white;
+    text-decoration: none;
+}
 
 .primary-button:active {
     background: var(--color-primary-hover);

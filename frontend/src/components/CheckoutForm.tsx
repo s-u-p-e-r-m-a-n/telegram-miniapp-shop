@@ -128,7 +128,7 @@ export function CheckoutForm({
                     <span>Комментарий</span>
 
                     <textarea
-                        placeholder="Например: позвонить перед доставкой"
+                        placeholder="Укажите адрес доставки или напишите «Самовывоз», а так же можно оставить пожелания к заказу."
                         maxLength={1000}
                         value={customerComment}
                         onChange={event =>

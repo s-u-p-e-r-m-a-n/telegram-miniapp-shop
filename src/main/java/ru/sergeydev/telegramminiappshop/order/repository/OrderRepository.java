@@ -1,4 +1,5 @@
 package ru.sergeydev.telegramminiappshop.order.repository;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,5 +40,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("orderId") Long orderId
     );
 
+    //выборка просроченных заказов без попыток оплаты.
+    @Query("""
+    select o.id
+    from Order o
+    where o.status = :status
+      and o.paymentExpiresAt <= :now
+      and not exists (
+          select p.id
+          from Payment p
+          where p.order = o
+      )
+    """)
+    List<Long> findExpiredOrderIdsWithoutPayments(
+            @Param("status") OrderStatus status,
+            @Param("now") OffsetDateTime now
+    );
 
 }

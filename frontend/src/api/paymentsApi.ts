@@ -12,6 +12,17 @@ export async function createPayment(
     idempotencyKey: string
 ): Promise<CreatePaymentResponse> {
 
+    if (
+        import.meta.env.DEV
+        && import.meta.env.VITE_PAYMENT_LINK_DEMO === 'true'
+    ) {
+        return {
+            paymentId: 0,
+            status: 'PENDING',
+            confirmationUrl: `https://example.com/?demoPayment=${orderId}`
+        };
+    }
+
     const response = await fetch(
         `/api/telegram/orders/${orderId}/payments`,
         {

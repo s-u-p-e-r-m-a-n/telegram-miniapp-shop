@@ -102,4 +102,6 @@ select p.providerInvoiceId
             @Param("status") PaymentStatus status
     );
 
+    boolean existsByOrder_Id(Long orderId);
+
 }

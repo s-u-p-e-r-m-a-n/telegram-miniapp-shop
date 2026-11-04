@@ -29,7 +29,12 @@ export function PaymentCountdown({expiresAt}: PaymentCountdownProps) {
     }, [expiresAt]);
 
     if (remainingSeconds === 0) {
-        return <p>Время на оплату истекло</p>;
+        return (
+            <p>
+                Время на оплату истекло.
+                Уточняем состояние заказа…
+            </p>
+        );
     }
 
     const minutes = Math.floor(remainingSeconds / 60);

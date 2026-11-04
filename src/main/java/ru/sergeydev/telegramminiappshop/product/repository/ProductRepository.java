@@ -44,4 +44,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             where p.id = :id
             """)
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
+
+    List<Product> findAllByOrderBySortOrderAsc();
+
+    boolean existsByCategory_Id(Long categoryId);
+
+    //запрос для проверки перед удалением существует ли товар в заказе
+    @Query("""
+            select case when count(item) > 0 then true else false end
+            from OrderItem item
+            where item.product.id = :productId
+            """)
+    boolean existsInOrders(@Param("productId") Long productId);
+
+    @Query("""
+            select distinct item.order.id
+                    from OrderItem item
+                    where item.product.id = :productId
+            """)
+    List<Long> findByOrderId(@Param("productId") Long productId);
 }

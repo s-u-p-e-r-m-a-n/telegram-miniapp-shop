@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import ru.sergeydev.telegramminiappshop.common.exception.BadRequestException;
+import ru.sergeydev.telegramminiappshop.common.exception.ConflictException;
 import ru.sergeydev.telegramminiappshop.common.exception.NotFoundException;
 import ru.sergeydev.telegramminiappshop.common.exception.UnauthorizedException;
 
@@ -143,5 +144,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(error);
+    }
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponseDto> handleConflict(
+            ConflictException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI()
+        );
     }
 }

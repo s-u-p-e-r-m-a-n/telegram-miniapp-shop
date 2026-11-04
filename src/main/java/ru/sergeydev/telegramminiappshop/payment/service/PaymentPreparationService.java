@@ -21,6 +21,9 @@ import java.util.Comparator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+
+
+//Сервис подготовки платежей
 @Service
 @RequiredArgsConstructor
 public class PaymentPreparationService {
@@ -257,5 +260,38 @@ public class PaymentPreparationService {
 
         payment.setStatus(PaymentStatus.CANCELLED);
         payment.setUpdatedAt(OffsetDateTime.now());
+    }
+
+//отменить просроченный заказ без платежей
+    @Transactional
+    public void cancelExpiredOrderWithoutPayments(Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() ->
+                        new NotFoundException("Заказ не найден")
+                );
+
+        entityManager.refresh(order);
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            return;
+        }
+
+        OffsetDateTime expiresAt = order.getPaymentExpiresAt();
+
+        if (expiresAt == null) {
+            throw new IllegalStateException(
+                    "У заказа отсутствует срок оплаты"
+            );
+        }
+
+        if (OffsetDateTime.now().isBefore(expiresAt)) {
+            return;
+        }
+
+        if (paymentRepository.existsByOrder_Id(orderId)) {
+            return;
+        }
+
+        orderService.cancelAwaitingPayment(orderId);
     }
 }
