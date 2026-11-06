@@ -26,5 +26,5 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build backend
-        run: bash ./mvnw --batch-mode --no-transfer-progress -DskipTests verify
+      - name: Build backend and run unit tests
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Dtest=OrderServiceTest,PaymentServiceTest verify
