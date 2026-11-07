@@ -1,0 +1,62 @@
+name: tma-release
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - release-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: release
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      APP_UPLOAD_DIR: /app/uploads/products
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:?Set TELEGRAM_ADMIN_CHAT_ID in .env}
+      TELEGRAM_WEB_APP_URL: ${TELEGRAM_WEB_APP_URL:?Set TELEGRAM_WEB_APP_URL in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-}
+    volumes:
+      - release-uploads:/app/uploads/products
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://localhost:8080/api/categories"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8081}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  release-db-data:
+  release-uploads:
